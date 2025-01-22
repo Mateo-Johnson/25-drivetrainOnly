@@ -31,23 +31,23 @@ public final class Constants {
 
     // SPARK MAX CAN IDs AND THRIFTY DIO PORTS FOR SWERVE 
     //FRONT LEFT
-    public static final int frontLeftDrivingCanId = 11;
-    public static final int frontLeftTurningCanId = 10;
-    public static final int frontLeftEncoderPort = 0;
+    public static final int frontLeftDrivingCanId = 10;
+    public static final int frontLeftTurningCanId = 9;
+    public static final int frontLeftEncoderPort = 1;
 
-    //REAR RIGHT
-    public static final int rearLeftDrivingCanId = 13;
-    public static final int rearLeftTurningCanId = 12;
+    //REAR LEFT
+    public static final int rearLeftDrivingCanId = 8;
+    public static final int rearLeftTurningCanId = 7;
     public static final int rearLeftEncoderPort = 2;
 
     //FRONT RIGHT
-    public static final int frontRightDrivingCanId = 15;
-    public static final int frontRightTurningCanId = 14;
-    public static final int frontRightEncoderPort = 1;
+    public static final int frontRightDrivingCanId = 4;
+    public static final int frontRightTurningCanId = 3;
+    public static final int frontRightEncoderPort = 0;
 
     //REAR RIGHT
-    public static final int rearRightDrivingCanId = 17;
-    public static final int rearRightTurningCanId = 16;
+    public static final int rearRightDrivingCanId = 5; 
+    public static final int rearRightTurningCanId = 6;
     public static final int rearRightEncoderPort = 3;
 
 
