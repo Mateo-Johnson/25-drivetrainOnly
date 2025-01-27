@@ -11,7 +11,7 @@ public final class Constants {
   public static final class DriveConstants {
     // Driving Parameters - Note that these are the just allowed maximum speeds
     public static final double maxSpeedMetersPerSecond = 4.8; // Adjust based on preference
-    public static final double maxAngularSpeed = 2 * Math.PI; // Radians per second
+    public static final double maxAngularSpeed = 2 * Math.PI; // Radians per second 
 
     // Chassis configuration
     public static final double trackWidth = Units.inchesToMeters(29);
