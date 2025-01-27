@@ -1,9 +1,6 @@
 package frc.robot;
 
-import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
@@ -12,7 +9,6 @@ import frc.robot.drivetrain.Drivetrain;
 import frc.robot.utils.Constants.OIConstants;
 
 public class RobotContainer {
-    private final SendableChooser<Command> autoChooser;
 
     // The robot's subsystems
     private final Drivetrain drivetrain = new Drivetrain(); // Drivetrain Subsystem
@@ -27,10 +23,6 @@ public class RobotContainer {
      * The container for the robot. Contains subsystems, OI devices, and commands.
      */
     public RobotContainer() {
-        // Create the auto chooser with a default auto
-        autoChooser = AutoBuilder.buildAutoChooser("Default Auto");
-        
-        SmartDashboard.putData("Auto Chooser", autoChooser);
     
         // Configure the button bindings
         configureButtonBindings();
@@ -71,6 +63,6 @@ public class RobotContainer {
      * @return the command to run in autonomous
      */
     public Command getAutonomousCommand() {
-        return autoChooser.getSelected();
+        return null;
     }
 }
