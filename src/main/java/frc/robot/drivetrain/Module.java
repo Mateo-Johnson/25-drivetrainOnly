@@ -29,12 +29,14 @@ public class Module {
     private final SparkClosedLoopController turningClosedLoopController;
 
     private double chassisAngularOffset = 0;
+    @SuppressWarnings("unused")
     private SwerveModuleState desiredState = new SwerveModuleState(0.0, new Rotation2d());
 
+    @SuppressWarnings("unused")
     private double lastAngle;
     private boolean hasBeenSeeded = false;
     private final Timer seedTimer = new Timer();
-    private static final double SEED_DELAY_SECONDS = 2.0; // Wait 2 seconds after boot
+    private static final double seed_delay = 2.0; // Wait 2 seconds after boot
 
     // Constants for analog encoder configuration
     private static final double ENCODER_VOLTAGE_MIN = 0.01; // 1% minimum voltage
@@ -81,7 +83,7 @@ public class Module {
         }
 
         // Check if we've waited long enough after boot
-        if (seedTimer.get() < SEED_DELAY_SECONDS) {
+        if (seedTimer.get() < seed_delay) {
             return false;
         }
 
