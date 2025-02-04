@@ -8,7 +8,9 @@ import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.utils.Constants.DriveConstants;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
@@ -18,7 +20,7 @@ import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
 
 public class Drivetrain extends SubsystemBase {
-  //Create Swerve Modules
+  // Create Swerve Modules
   private final Module frontLeft = new Module(
       DriveConstants.frontLeftDrivingCanId,
       DriveConstants.frontLeftTurningCanId,
@@ -43,22 +45,34 @@ public class Drivetrain extends SubsystemBase {
       DriveConstants.rearRightEncoderPort,
       DriveConstants.backRightChassisAngularOffset);
 
-  //The gyro sensor
+  // The gyro sensor
   private final AHRS gyro = new AHRS(NavXComType.kMXP_SPI);
 
-  //Odometry class for tracking robot pose
-  SwerveDriveOdometry odometry = new SwerveDriveOdometry(
-      DriveConstants.kDriveKinematics,
-      Rotation2d.fromDegrees(gyro.getAngle()),
-      new SwerveModulePosition[] {
-          frontLeft.getPosition(),
-          frontRight.getPosition(),
-          rearLeft.getPosition(),
-          rearRight.getPosition()
-      });
+  // Odometry class for tracking robot pose
+  private SwerveDriveOdometry odometry;
+  
+  // Track initialization state
+  private boolean modulesInitialized = false;
+  private final Timer initTimer = new Timer();
+  private static final double INIT_TIMEOUT_SECONDS = 5.0; // Maximum time to wait for initialization
+  private boolean initTimeoutLogged = false;
 
   public Drivetrain() {
-    //Load the RobotConfig from the GUI settings
+    // Start initialization timer
+    initTimer.start();
+
+    // Initialize odometry
+    odometry = new SwerveDriveOdometry(
+        DriveConstants.kDriveKinematics,
+        Rotation2d.fromDegrees(gyro.getAngle()),
+        new SwerveModulePosition[] {
+            frontLeft.getPosition(),
+            frontRight.getPosition(),
+            rearLeft.getPosition(),
+            rearRight.getPosition()
+        });
+
+    // Load the RobotConfig from the GUI settings
     RobotConfig config;
     try {
       config = RobotConfig.fromGUISettings();
@@ -67,27 +81,89 @@ public class Drivetrain extends SubsystemBase {
       return;
     }
 
-    //Configure AutoBuilder last
+    // Configure AutoBuilder last
     AutoBuilder.configure(
-        this::getPose, //Robot pose supplier
-        this::resetOdometry, //Method to reset odometry
-        this::getRobotRelativeSpeeds, //ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-        (speeds, feedforwards) -> driveRobotRelative(speeds), //Method that will drive the robot given ROBOT RELATIVE ChassisSpeeds
+        this::getPose,
+        this::resetOdometry, 
+        this::getRobotRelativeSpeeds,
+        this::driveRobotRelative,
         new PPHolonomicDriveController(
-            new PIDConstants(5.0, 0.0, 0.0), //Translation PID constants
-            new PIDConstants(5.0, 0.0, 0.0) //Rotation PID constants
+            new PIDConstants(5.0, 0.0, 0.0),
+            new PIDConstants(5.0, 0.0, 0.0)
         ),
-        config, //The robot configuration
+        config,
         () -> {
-          //Boolean supplier that controls when the path will be mirrored for the red alliance
           var alliance = DriverStation.getAlliance();
           if (alliance.isPresent()) {
             return alliance.get() == DriverStation.Alliance.Red;
           }
           return false;
         },
-        this //Reference to this subsystem to set requirements
+        this
     );
+  }
+
+  @Override
+  public void periodic() {
+    // Handle initialization of swerve modules
+    if (!modulesInitialized) {
+      // Check if all modules are seeded
+      boolean allSeeded = 
+          frontLeft.seedEncoderIfNeeded() &&
+          frontRight.seedEncoderIfNeeded() &&
+          rearLeft.seedEncoderIfNeeded() &&
+          rearRight.seedEncoderIfNeeded();
+
+      if (allSeeded) {
+        modulesInitialized = true;
+        SmartDashboard.putString("Drive Status", "Initialized");
+        initTimer.stop();
+      } else if (initTimer.get() > INIT_TIMEOUT_SECONDS) {
+        // Log timeout only once
+        if (!initTimeoutLogged) {
+          DriverStation.reportWarning("Swerve module initialization timed out!", false);
+          initTimeoutLogged = true;
+        }
+        SmartDashboard.putString("Drive Status", "Init Timeout");
+      } else {
+        SmartDashboard.putString("Drive Status", "Initializing");
+      }
+    }
+
+    // Update odometry if modules are initialized
+    if (modulesInitialized) {
+      odometry.update(
+          Rotation2d.fromDegrees(gyro.getAngle()),
+          new SwerveModulePosition[] {
+              frontLeft.getPosition(),
+              frontRight.getPosition(),
+              rearLeft.getPosition(),
+              rearRight.getPosition()
+          });
+
+      // Output telemetry data
+      Pose2d pose = odometry.getPoseMeters();
+      SmartDashboard.putNumber("Robot X", pose.getX());
+      SmartDashboard.putNumber("Robot Y", pose.getY());
+      SmartDashboard.putNumber("Robot Heading", pose.getRotation().getDegrees());
+    }
+
+    // Always update module telemetry regardless of initialization state
+    updateModuleTelemetry();
+  }
+
+  /**
+   * Updates SmartDashboard with module telemetry data
+   */
+  private void updateModuleTelemetry() {
+    String[] moduleNames = {"FL", "FR", "RL", "RR"};
+    Module[] modules = {frontLeft, frontRight, rearLeft, rearRight};
+
+    for (int i = 0; i < modules.length; i++) {
+      SwerveModuleState state = modules[i].getState();
+      SmartDashboard.putNumber(moduleNames[i] + " Speed", state.speedMetersPerSecond);
+      SmartDashboard.putNumber(moduleNames[i] + " Angle", state.angle.getDegrees());
+    }
   }
 
   private ChassisSpeeds getRobotRelativeSpeeds() {
@@ -101,18 +177,6 @@ public class Drivetrain extends SubsystemBase {
   private void driveRobotRelative(ChassisSpeeds chassisSpeeds) {
     SwerveModuleState[] states = DriveConstants.kDriveKinematics.toSwerveModuleStates(chassisSpeeds);
     setModuleStates(states);
-  }
-
-  @Override
-  public void periodic() {
-    odometry.update(
-        Rotation2d.fromDegrees(gyro.getAngle()),
-        new SwerveModulePosition[] {
-            frontLeft.getPosition(),
-            frontRight.getPosition(),
-            rearLeft.getPosition(),
-            rearRight.getPosition()
-        });
   }
 
   public Pose2d getPose() {
