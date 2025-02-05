@@ -33,7 +33,7 @@ public class RobotContainer {
                     double rot = -MathUtil.applyDeadband(primary.getRightX(), InterfaceConstants.driveDeadband);
     
                     // Apply slow factor if B button is pressed
-                    if (primary.y().getAsBoolean()) {
+                    if (primary.b().getAsBoolean()) {
                         ySpeed *= InterfaceConstants.slowFactor;
                         xSpeed *= InterfaceConstants.slowFactor;
                         rot *= InterfaceConstants.slowFactor;
