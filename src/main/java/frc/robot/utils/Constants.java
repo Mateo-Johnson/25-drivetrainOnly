@@ -6,6 +6,25 @@ import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.math.util.Units;
 
 public final class Constants {
+
+    public static final class NeoMotorConstants {
+        public static final double freeSpeedRpm = 5676;
+    }
+
+    public static final class ModuleConstants {
+        public static final double wheelDiameterMeters = 0.10033;
+        public static final double drivingMotorReduction = 6.12;
+        public static final double turningMotorReduction = 150.0/7.0;
+
+        public static final double encoderResolution = 1.0;
+        public static final double minEncoderFrequency = 100;
+        public static final double maxEncoderFrequency = 1000;
+
+        public static final double wheelCircumferenceMeters = wheelDiameterMeters * Math.PI;
+        public static final double drivingMotorFreeSpeedRps = NeoMotorConstants.freeSpeedRpm / 60;
+        public static final double driveWheelFreeSpeedRps = (drivingMotorFreeSpeedRps * wheelCircumferenceMeters) / drivingMotorReduction;
+
+    }
   public static final class DriveConstants {
     // Driving Parameters - Note that these are the just allowed maximum speeds
     public static final double maxSpeedMetersPerSecond = 4.8; // Adjust based on preference
@@ -28,27 +47,27 @@ public final class Constants {
     public static final int frontLeftDrivingCanId = 10;
     public static final int frontLeftTurningCanId = 9;
     public static final int frontLeftEncoderPort = 1;
-    public static final double frontLeftChassisAngularOffset = 0;
+    public static final double frontLeftChassisAngularOffset = 6.0467089541672;
 
     //REAR LEFT
     public static final int rearLeftDrivingCanId = 8;
     public static final int rearLeftTurningCanId = 7;
     public static final int rearLeftEncoderPort = 2;
-    public static final double rearLeftChassisAngularOffset = 0;
+    public static final double rearLeftChassisAngularOffset = 2.869317777834148;
 
     //FRONT RIGHT
     public static final int frontRightDrivingCanId = 4;
     public static final int frontRightTurningCanId = 3;
     public static final int frontRightEncoderPort = 0;
-    public static final double frontRightChassisAngularOffset = 4;
+    public static final double frontRightChassisAngularOffset = 5.146059058072114;
 
     //REAR RIGHT
     public static final int rearRightDrivingCanId = 5; 
     public static final int rearRightTurningCanId = 6;
     public static final int rearRightEncoderPort = 3;
-    public static final double rearRightChassisAngularOffset = 0;
+    public static final double rearRightChassisAngularOffset = 5.91815992237224;
 
-        public static final boolean gyroReversed = false;
+    public static final boolean gyroReversed = false;
     }
 
     /**
