@@ -7,7 +7,7 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import frc.robot.utils.Constants.ModuleConstants;
 
 public final class Config {
-    public static final class MK4iSwerveModule {
+    public static final class MK4ISwerveModule {
         public static final SparkMaxConfig drivingConfig = new SparkMaxConfig();
         public static final SparkMaxConfig turningConfig = new SparkMaxConfig();
 

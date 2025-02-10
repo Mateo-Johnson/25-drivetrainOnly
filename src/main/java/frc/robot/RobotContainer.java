@@ -34,7 +34,7 @@ public class RobotContainer {
                     // Get the controller inputs
                     double ySpeed = -MathUtil.applyDeadband(primary.getLeftY(), OIConstants.driveDeadband);
                     double xSpeed = -MathUtil.applyDeadband(primary.getLeftX(), OIConstants.driveDeadband);
-                    double rot = -MathUtil.applyDeadband(primary.getRightX(), OIConstants.driveDeadband);
+                    double rot = MathUtil.applyDeadband(primary.getRightX(), OIConstants.driveDeadband);
     
                     // Apply slow factor if B button is pressed
                     if (primary.b().getAsBoolean()) {

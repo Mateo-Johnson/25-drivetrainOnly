@@ -3,7 +3,6 @@ package frc.robot.drivetrain;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import frc.robot.utils.Config;
 
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkMax;
@@ -12,193 +11,87 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.RelativeEncoder;
+
 import edu.wpi.first.wpilibj.AnalogEncoder;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.utils.Config;
+import edu.wpi.first.math.MathUtil;
 
 public class Module {
-    private final SparkMax drivingSpark;
-    private final SparkMax turningSpark;
+  private final SparkMax m_drivingSpark;
+  private final SparkMax m_turningSpark;
 
-    private final RelativeEncoder drivingEncoder;
-    private final RelativeEncoder turningEncoder;
+  private final RelativeEncoder m_drivingEncoder;
+  private final AnalogEncoder m_turningEncoder;
+
+  private final SparkClosedLoopController m_drivingClosedLoopController;
+  private final SparkClosedLoopController m_turningClosedLoopController;
+
+  private double m_chassisAngularOffset = 0;
+  private SwerveModuleState m_desiredState = new SwerveModuleState(0.0, new Rotation2d());
+
+  public Module(int drivingCANId, int turningCANId, int turningEncoderChannel, double chassisAngularOffset) {
+    m_drivingSpark = new SparkMax(drivingCANId, MotorType.kBrushless);
+    m_turningSpark = new SparkMax(turningCANId, MotorType.kBrushless);
+
+    m_drivingEncoder = m_drivingSpark.getEncoder();
+    m_turningEncoder = new AnalogEncoder(turningEncoderChannel);
+
+    m_drivingClosedLoopController = m_drivingSpark.getClosedLoopController();
+    m_turningClosedLoopController = m_turningSpark.getClosedLoopController();
+
+    m_drivingSpark.configure(Config.MK4ISwerveModule.drivingConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    m_turningSpark.configure(Config.MK4ISwerveModule.turningConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
+    m_chassisAngularOffset = chassisAngularOffset;
+
+    // Read absolute encoder position, apply offset, and set the turning motor position accordingly
+    double absoluteAngle = getEncoderRadians() - m_chassisAngularOffset;
+    m_turningClosedLoopController.setReference(absoluteAngle, ControlType.kPosition);
     
-    private final AnalogEncoder analogEncoder;
-    
-    private final SparkClosedLoopController drivingClosedLoopController;
-    private final SparkClosedLoopController turningClosedLoopController;
+    m_desiredState.angle = new Rotation2d(absoluteAngle);
+    m_drivingEncoder.setPosition(0);
+}
 
-    private double chassisAngularOffset = 0;
-    @SuppressWarnings("unused")
-    private SwerveModuleState desiredState = new SwerveModuleState(0.0, new Rotation2d());
+  private double getEncoderRadians() {
+    return MathUtil.inputModulus(m_turningEncoder.get() * 2.0 * Math.PI, 0.0, 2.0 * Math.PI);
+  }
 
-    @SuppressWarnings("unused")
-    private double lastAngle;
-    private boolean hasBeenSeeded = false;
-    private final Timer seedTimer = new Timer();
-    private static final double seed_delay = 2.0; // Wait 2 seconds after boot
+  public SwerveModuleState getState() {
+    return new SwerveModuleState(m_drivingEncoder.getVelocity(),
+        new Rotation2d(getEncoderRadians() - m_chassisAngularOffset));
+  }
 
-    // Constants for analog encoder configuration
-    private static final double ENCODER_VOLTAGE_MIN = 0.01; // 1% minimum voltage
-    private static final double ENCODER_VOLTAGE_MAX = 0.99; // 99% maximum voltage
+  public SwerveModulePosition getPosition() {
+    return new SwerveModulePosition(
+        m_drivingEncoder.getPosition(),
+        new Rotation2d(getEncoderRadians() - m_chassisAngularOffset));
+  }
 
-    public Module(int drivingCANId, int turningCANId, int analogChannel, double cAngularOffset) {
-        drivingSpark = new SparkMax(drivingCANId, MotorType.kBrushless);
-        turningSpark = new SparkMax(turningCANId, MotorType.kBrushless);
+  public void setDesiredState(SwerveModuleState desiredState) {
+    SwerveModuleState correctedDesiredState = new SwerveModuleState();
+    correctedDesiredState.speedMetersPerSecond = desiredState.speedMetersPerSecond;
+    correctedDesiredState.angle = desiredState.angle.plus(Rotation2d.fromRadians(m_chassisAngularOffset));
 
-        drivingEncoder = drivingSpark.getEncoder();
-        turningEncoder = turningSpark.getEncoder();
-        
-        // Create and configure the AnalogEncoder
-        // Using fullRange of 2π since we want radians, and expectedZero of 0
-        analogEncoder = new AnalogEncoder(analogChannel, 2 * Math.PI, 0);
-        // Set voltage range to avoid noisy readings at extremes
-        analogEncoder.setVoltagePercentageRange(ENCODER_VOLTAGE_MIN, ENCODER_VOLTAGE_MAX);
-        
-        drivingClosedLoopController = drivingSpark.getClosedLoopController();
-        turningClosedLoopController = turningSpark.getClosedLoopController();
+    SwerveModuleState.optimize(correctedDesiredState, new Rotation2d(getEncoderRadians()));
 
-        drivingSpark.configure(Config.MK4iSwerveModule.drivingConfig, ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters);
-        turningSpark.configure(Config.MK4iSwerveModule.turningConfig, ResetMode.kResetSafeParameters,
-            PersistMode.kPersistParameters);
+    m_drivingClosedLoopController.setReference(correctedDesiredState.speedMetersPerSecond, ControlType.kVelocity);
+    m_turningClosedLoopController.setReference(correctedDesiredState.angle.getRadians(), ControlType.kPosition);
 
-        chassisAngularOffset = cAngularOffset;
-        
-        // Start the seed timer
-        seedTimer.start();
-        
-        // Initialize lastAngle but don't set the encoder position yet
-        lastAngle = getAbsoluteAngle();
-    }
+    m_desiredState = desiredState;
+  }
 
-    /**
-     * Attempts to seed the relative encoder with the absolute encoder position.
-     * Should be called periodically until successful.
-     * @return true if seeding was successful, false if it needs to be called again
-     */
-    public boolean seedEncoderIfNeeded() {
-        if (hasBeenSeeded) {
-            return true;
-        }
+  public void resetEncoders() {
+    m_drivingEncoder.setPosition(0);
+    m_turningClosedLoopController.setReference(getEncoderRadians() - m_chassisAngularOffset, ControlType.kPosition);
+}
 
-        // Check if we've waited long enough after boot
-        if (seedTimer.get() < seed_delay) {
-            return false;
-        }
 
-        // Get absolute angle and verify it's valid
-        double absoluteAngle = getAbsoluteAngle();
-        if (Double.isNaN(absoluteAngle)) {
-            SmartDashboard.putString("Module " + turningSpark.getDeviceId() + " Seed Status", 
-                "Invalid encoder reading");
-            return false;
-        }
 
-        // Set the relative encoder position
-        turningEncoder.setPosition(absoluteAngle);
-        lastAngle = absoluteAngle;
-        hasBeenSeeded = true;
+  public double getRawAngle() {
+    return getEncoderRadians();
+  }
 
-        SmartDashboard.putString("Module " + turningSpark.getDeviceId() + " Seed Status", 
-            "Seeded at angle: " + Math.toDegrees(absoluteAngle));
-        return true;
-    }
-
-    /**
-     * Gets the absolute angle in radians
-     * AnalogEncoder.get() returns the value scaled by our fullRange (2π)
-     * We then adjust by the chassis offset
-     */
-    private double getAbsoluteAngle() {
-        // Get the raw angle in radians (since we set fullRange to 2π)
-        double angle = analogEncoder.get();
-        
-        // Subtract the chassis offset
-        angle -= chassisAngularOffset;
-        
-        // Put the angle in the correct range (-π to π)
-        angle %= 2.0 * Math.PI;
-        if (angle < -Math.PI) {
-            angle += 2.0 * Math.PI;
-        } else if (angle > Math.PI) {
-            angle -= 2.0 * Math.PI;
-        }
-        
-        return angle;
-    }
-
-    /**
-     * Returns the current state of the module.
-     * Uses the relative encoder for position if seeded, falls back to absolute if not.
-     */
-    public SwerveModuleState getState() {
-        double currentAngleRadians = hasBeenSeeded ? 
-            turningEncoder.getPosition() : getAbsoluteAngle();
-        
-        return new SwerveModuleState(
-            drivingEncoder.getVelocity(),
-            new Rotation2d(currentAngleRadians)
-        );
-    }
-
-    /**
-     * Returns the current position of the module.
-     * Uses the relative encoder for position if seeded, falls back to absolute if not.
-     */
-    public SwerveModulePosition getPosition() {
-        double currentAngleRadians = hasBeenSeeded ? 
-            turningEncoder.getPosition() : getAbsoluteAngle();
-            
-        return new SwerveModulePosition(
-            drivingEncoder.getPosition(),
-            new Rotation2d(currentAngleRadians)
-        );
-    }
-
-    /**
-     * Sets the desired state for the module.
-     */
-    public void setDesiredState(SwerveModuleState desiredState) {
-        // Don't allow movement until encoders are seeded
-        if (!hasBeenSeeded) {
-            return;
-        }
-
-        double currentAngleRadians = turningEncoder.getPosition();
-        
-        @SuppressWarnings("deprecation")
-        SwerveModuleState optimizedState = SwerveModuleState.optimize(desiredState, 
-            new Rotation2d(currentAngleRadians));
-
-        drivingClosedLoopController.setReference(
-            optimizedState.speedMetersPerSecond, 
-            ControlType.kVelocity
-        );
-        
-        double targetAngle = optimizedState.angle.getRadians();
-        
-        turningClosedLoopController.setReference(
-            targetAngle, 
-            ControlType.kPosition
-        );
-
-        this.desiredState = optimizedState;
-        
-        SmartDashboard.putNumber("Module " + turningSpark.getDeviceId() + " Absolute Angle", 
-            Math.toDegrees(getAbsoluteAngle()));
-        SmartDashboard.putNumber("Module " + turningSpark.getDeviceId() + " Relative Angle", 
-            Math.toDegrees(currentAngleRadians));
-        SmartDashboard.putNumber("Module " + turningSpark.getDeviceId() + " Target Angle", 
-            Math.toDegrees(targetAngle));
-    }
-
-    /** Zeroes all the SwerveModule encoders. */
-    public void resetEncoders() {
-        drivingEncoder.setPosition(0);
-    }
-
-    public void close() {
-        analogEncoder.close();
-    }
+  public double getRawPosition() {
+    return m_turningEncoder.get();
+  }
 }

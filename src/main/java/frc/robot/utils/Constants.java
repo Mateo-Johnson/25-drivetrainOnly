@@ -22,32 +22,31 @@ public final class Constants {
 
     // Angular offsets of the modules relative to the chassis in radians
     // These values should be adjusted based on the Thrifty encoder readings
-    public static final double frontLeftChassisAngularOffset = -Math.PI / 2;
-    public static final double frontRightChassisAngularOffset = 0;
-    public static final double backLeftChassisAngularOffset = Math.PI;
-    public static final double backRightChassisAngularOffset = Math.PI / 2;
 
     // SPARK MAX CAN IDs AND THRIFTY DIO PORTS FOR SWERVE 
     //FRONT LEFT
     public static final int frontLeftDrivingCanId = 10;
     public static final int frontLeftTurningCanId = 9;
     public static final int frontLeftEncoderPort = 1;
+    public static final double frontLeftChassisAngularOffset = 0;
 
     //REAR LEFT
     public static final int rearLeftDrivingCanId = 8;
     public static final int rearLeftTurningCanId = 7;
     public static final int rearLeftEncoderPort = 2;
+    public static final double rearLeftChassisAngularOffset = 0;
 
     //FRONT RIGHT
     public static final int frontRightDrivingCanId = 4;
     public static final int frontRightTurningCanId = 3;
     public static final int frontRightEncoderPort = 0;
+    public static final double frontRightChassisAngularOffset = 4;
 
     //REAR RIGHT
     public static final int rearRightDrivingCanId = 5; 
     public static final int rearRightTurningCanId = 6;
     public static final int rearRightEncoderPort = 3;
-
+    public static final double rearRightChassisAngularOffset = 0;
 
     public static final boolean gyroReversed = false;
   }
